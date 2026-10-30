@@ -1,38 +1,73 @@
+# Workspace root for mini-ai-factory.
+#
+# This file is not a package. It defines the uv workspace (one lockfile and one
+# .venv shared by every service), the dev tools, and repo-wide Ruff and pytest
+# settings. Each service has its own pyproject.toml under services/<name>/.
+# Rationale and tradeoffs: docs/adr/000-monorepo-and-tooling.md §2.
+
 [project]
 name = "mini-ai-factory"
 version = "0.0.0"
 description = "Laptop-scale model of an enterprise AI factory."
+# Lower bound only: uv.lock is resolved for every Python >= 3.12, so moving to a
+# newer interpreter later is a change to .python-version, not to this file.
 requires-python = ">=3.12"
-# Every workspace member is listed here so a bare `uv sync` installs them all.
-# Without this, `uv sync` removes members the root does not depend on.
+# Every workspace member must be listed here. `uv sync` is exact: it uninstalls
+# anything the root does not depend on, so an unlisted service would be removed
+# from .venv by a plain `uv sync`. Each entry also needs a line in
+# [tool.uv.sources] below.
 dependencies = ["gateway"]
 
+# Tools for working on the repo, never shipped with a service. uv installs the
+# `dev` group by default; container builds use `--no-dev` to leave it out.
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
+    "httpx>=0.28.1",  # Test client for the ASGI apps; moves to gateway runtime deps in Phase 1.
+    "pre-commit>=4.7.0",
     "pytest>=9.2.0",
     "ruff>=0.17.3",
 ]
 
 [tool.uv]
-# Virtual root: never built or installed, only holds the workspace and dev tooling.
+# Virtual root: uv never builds or installs this project, only its dependencies.
 package = false
 
 [tool.uv.workspace]
+# Every non-empty folder under services/ must contain a pyproject.toml, or every
+# uv command fails. Scratch files and notes belong elsewhere.
 members = ["services/*"]
 
 [tool.uv.sources]
+# Resolve these names to the local workspace members, never to PyPI. This also
+# prevents a same-named public package from being installed in their place.
 gateway = { workspace = true }
 
 [tool.ruff]
+# Where first-party code lives, so imports of our own packages are grouped
+# separately from third-party imports by the import-sorting rule (I).
 src = ["services/*/src"]
 
 [tool.ruff.lint]
+# Ruff's default is only E4, E7, E9 and F. Beyond the general-purpose sets:
+#   ASYNC  blocking calls inside `async def` (they stall every in-flight request)
+#   S      bandit security checks (hardcoded secrets, 0.0.0.0 binds, missing timeouts)
 select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "S", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
+# S101 flags `assert` because Python strips asserts under `-O`. In tests,
+# assert is exactly what pytest expects.
 "**/tests/**" = ["S101"]
 
 [tool.pytest.ini_options]
+# Per-service unit tests live in services/*/tests; cross-service suites
+# (e.g. the red-team harness) will live in tests/.
 testpaths = ["services", "tests"]
-addopts = ["--import-mode=importlib", "--strict-markers", "--strict-config"]
+addopts = [
+    # Import test files without editing sys.path, so services can each have a
+    # tests/test_healthz.py without module-name collisions.
+    "--import-mode=importlib",
+    # Unknown markers and config keys are errors, not warnings, so a typo
+    # cannot silently disable a test or a setting.
+    "--strict-markers",
+    "--strict-config",
+]
