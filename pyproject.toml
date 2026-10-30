@@ -1,0 +1,38 @@
+[project]
+name = "mini-ai-factory"
+version = "0.0.0"
+description = "Laptop-scale model of an enterprise AI factory."
+requires-python = ">=3.12"
+# Every workspace member is listed here so a bare `uv sync` installs them all.
+# Without this, `uv sync` removes members the root does not depend on.
+dependencies = ["gateway"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+]
+
+[tool.uv]
+# Virtual root: never built or installed, only holds the workspace and dev tooling.
+package = false
+
+[tool.uv.workspace]
+members = ["services/*"]
+
+[tool.uv.sources]
+gateway = { workspace = true }
+
+[tool.ruff]
+src = ["services/*/src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "S", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]
+
+[tool.pytest.ini_options]
+testpaths = ["services", "tests"]
+addopts = ["--import-mode=importlib", "--strict-markers", "--strict-config"]
