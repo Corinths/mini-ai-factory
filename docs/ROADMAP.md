@@ -12,7 +12,7 @@ Phases run back to back; each gate is a demo plus a merged ADR, and slipping a g
 
 ## Phase 0: Foundation (now to Nov 8)
 
-Gate: an empty repo that already has CI, a `CLAUDE.md`, a dev container, and one passing test. Everything after this is faster because of it.
+Gate: an empty repo that already has CI, a `CLAUDE.md`, secret scanning, and one passing test. Everything after this is faster because of it. (Dev container deferred to Phase 5, when Codespaces lets reviewers try the finished project; see the Phase 0 PR.)
 
 **Set up**
 
