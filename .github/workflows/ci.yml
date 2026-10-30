@@ -1,11 +1,21 @@
+# CI: lint and test every pull request using the same Make targets as local dev.
+# CI executes code from the PR (and every dependency it installs), so the job is
+# locked down to least privilege. Rationale: docs/adr/000-monorepo-and-tooling.md §7.
 name: CI
 
+# `pull_request`, never `pull_request_target`: for PRs from forks this runs with
+# a read-only token and no repository secrets. `pull_request_target` would run
+# with the base repo's secrets and write access, which is a classic takeover path.
 on:
   pull_request:
 
+# Least privilege for the automatic GITHUB_TOKEN: read the repo, nothing else.
+# A compromised step cannot push code, edit releases or comment on PRs.
 permissions:
   contents: read
 
+# One run per PR at a time: a new push cancels the in-flight run for the
+# previous commit instead of queueing behind it.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -13,17 +23,31 @@ concurrency:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    # The default job timeout is 6 hours; a hung test should fail fast instead.
     timeout-minutes: 10
     env:
-      # Fail if uv.lock is stale instead of silently re-locking.
+      # Every uv command fails if uv.lock is out of date with the pyproject.toml
+      # files, instead of silently re-resolving. CI must test exactly the
+      # dependency versions that were reviewed and committed.
       UV_LOCKED: "1"
     steps:
+      # Third-party actions are pinned to full commit SHAs because tags are
+      # mutable: whoever controls an action's repo can repoint a tag at new code
+      # (as happened with tj-actions/changed-files in March 2025). The trailing
+      # comment records the human-readable version for reviewers and Dependabot.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # By default checkout writes the token into .git/config, where any
+          # later step (including an installed package) could read it. This job
+          # never needs git credentials after checkout.
           persist-credentials: false
 
+      # Installs uv and restores its download cache, keyed on uv.lock and the
+      # pyproject.toml files. Caching is on by default for pull_request events.
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
 
+      # Explicit sync step so dependency install time and errors show up
+      # separately from lint and test results in the run log.
       - name: Install dependencies
         run: uv sync
 

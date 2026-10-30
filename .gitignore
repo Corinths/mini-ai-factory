@@ -1,11 +1,15 @@
-# Python
+# Files git should never track. Ignoring a file only prevents accidents with
+# known names; it is not secret scanning (gitleaks covers that separately).
+
+# Python build and bytecode artifacts
 __pycache__/
 *.py[cod]
 *.egg-info/
 build/
 dist/
 
-# uv (uv.lock is committed)
+# uv: the environment is rebuilt from uv.lock, so it is never committed.
+# uv.lock itself IS committed; it is what makes installs reproducible.
 .venv/
 
 # Tool caches
@@ -15,21 +19,24 @@ dist/
 .coverage.*
 htmlcov/
 
-# Secrets: only the example env file is tracked
+# Secrets. Real values live in .env (local only); .env.example documents every
+# variable with placeholders and is the one env file that is tracked.
 .env
 .env.*
 !.env.example
+# Private keys and certificates
 *.pem
 *.key
 
-# Editors and OS
+# Editors and OS metadata
 .vscode/
 .idea/
 *.swp
 *~
 .DS_Store
+# Windows "downloaded from the internet" markers that appear as files under WSL
 *:Zone.Identifier
 
-# Claude Code personal overrides
+# Personal Claude Code overrides (shared project config in .claude/ is tracked)
 .claude/settings.local.json
 CLAUDE.local.md
