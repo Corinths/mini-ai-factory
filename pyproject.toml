@@ -23,6 +23,7 @@ dependencies = ["gateway"]
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",  # Test client for the ASGI apps; moves to gateway runtime deps in Phase 1.
+    "pre-commit>=4.7.0",
     "pytest>=9.2.0",
     "ruff>=0.17.3",
 ]

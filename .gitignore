@@ -28,6 +28,12 @@ htmlcov/
 *.pem
 *.key
 
+# Model weights (Phase 1 pulls multi-GB files). Keep them outside git; the
+# check-added-large-files hook catches anything these patterns miss.
+models/
+*.gguf
+*.safetensors
+
 # Editors and OS metadata
 .vscode/
 .idea/

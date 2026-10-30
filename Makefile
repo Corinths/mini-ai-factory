@@ -9,10 +9,12 @@
 # in the repo root would make `make test` report "up to date" and do nothing.
 .PHONY: setup lint format test
 
-# Install all workspace members and dev tools into .venv.
-# TODO: install pre-commit hooks (ruff, gitleaks) once that PR lands.
+# Install all workspace members and dev tools into .venv, then install the git
+# pre-commit hook (.pre-commit-config.yaml). --install-hooks builds the hook
+# environments now, so the first commit isn't slowed by a one-time gitleaks build.
 setup:
 	uv sync
+	uv run pre-commit install --install-hooks
 
 # Check-only: reports problems without changing files. This is what CI runs.
 lint:

@@ -1,0 +1,48 @@
+# Git hooks that run on every `git commit`, installed by `make setup`.
+#
+# Purpose: catch secrets and junk before they enter history. Anything pushed to
+# GitHub is effectively permanent (PR refs keep old commits reachable), so the
+# only reliable place to stop a secret is before the commit exists.
+# CI runs the same checks again, because hooks are local and can be skipped
+# with `git commit --no-verify`.
+#
+# Remote hooks are pinned to full commit SHAs for the same reason as the CI
+# actions: tags are mutable. The trailing comment records the version.
+# Rationale: docs/adr/001-secret-scanning-and-commit-hooks.md
+
+repos:
+  # Secret scanning. Scans only the staged changes, so it stays fast.
+  # --redact keeps the matched secret out of the terminal output.
+  # language: golang means pre-commit builds gitleaks from source on first run
+  # (it downloads a Go toolchain itself if none is installed), then caches it.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e # v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # Blocks accidentally committed large files, such as model weights. Git keeps
+  # every version of every file forever, and GitHub rejects files over 100 MB at
+  # push time, when the only fix is rewriting history.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+
+  # Ruff runs through `uv run` instead of the ruff-pre-commit mirror, so the
+  # hook uses the exact Ruff version pinned in uv.lock. One version for hooks,
+  # `make lint` and CI; no second pin to keep in sync.
+  # Hooks fix files in place; the commit then stops so you can review and
+  # re-stage the changes. CI only checks (`make lint`).
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --frozen ruff check --fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --frozen ruff format --force-exclude
+        language: system
+        types_or: [python, pyi, markdown]
